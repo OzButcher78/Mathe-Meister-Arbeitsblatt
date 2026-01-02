@@ -1,0 +1,114 @@
+
+import React from 'react';
+import { MathProblem, WorksheetSettings } from '../types';
+import ProblemRenderer from './ProblemRenderer';
+
+interface WorksheetProps {
+  problems: MathProblem[];
+  settings: WorksheetSettings;
+  isAnswerKey?: boolean;
+  pageNumber: number;
+}
+
+const Worksheet: React.FC<WorksheetProps> = ({ problems, settings, isAnswerKey = false, pageNumber }) => {
+  return (
+    <div 
+      className="bg-white mx-auto overflow-hidden flex flex-col relative box-border worksheet-page" 
+      style={{ 
+        width: '210mm', 
+        height: '297mm', 
+        padding: '15mm',
+        boxSizing: 'border-box'
+      }}
+    >
+      {/* Header */}
+      <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-8">
+        <div className="flex-grow">
+          <h1 className="text-3xl font-bold text-black math-font mb-2">
+            {isAnswerKey 
+              ? (settings.title ? `Lösungen: ${settings.title}` : 'Lösungen') 
+              : (settings.title || 'Matheübung')}
+          </h1>
+          <div className="flex gap-10 text-base text-black mt-4 math-font">
+            <p>Name: __________________________</p>
+            <p>Datum: __________________________</p>
+          </div>
+        </div>
+        <div className="text-right flex flex-col items-end justify-between self-stretch">
+           <div className="text-[10px] font-bold uppercase tracking-widest text-black whitespace-nowrap mb-1">Mathe Meister Arbeitsblatt</div>
+           <div className="text-[10px] text-gray-500 font-medium">Seite {pageNumber} {isAnswerKey ? '(Lösungen)' : ''}</div>
+        </div>
+      </div>
+
+      {/* Problems Grid - 3 columns, 4 rows = 12 problems */}
+      <div className="flex-grow">
+        <div className="grid grid-cols-3 gap-y-16 gap-x-12">
+          {problems.map((p, idx) => (
+            <div key={p.id} className="flex justify-center">
+              <ProblemRenderer problem={p} showAnswer={isAnswerKey} index={idx + (pageNumber - 1) * 12} />
+            </div>
+          ))}
+
+          {/* Fill remaining slots up to 12 if problems < 12 */}
+          {problems.length < 12 && Array.from({ length: 12 - problems.length }).map((_, i) => (
+            <div key={`empty-${i}`} className="h-32"></div>
+          ))}
+        </div>
+      </div>
+
+      {/* Footer Area - Only displayed on the worksheet, not on the answer key */}
+      {!isAnswerKey && (
+        <div className="mt-4 border-t-2 border-black pt-8 flex flex-col math-font text-black">
+          {/* Feedback and Signature Section */}
+          <div className="grid grid-cols-2 gap-8 items-end">
+            <div className="space-y-6">
+               <p className="text-sm font-bold border-l-4 border-black pl-2 uppercase tracking-wide">Wie fandest du dieses Blatt?</p>
+               <div className="flex gap-10 items-center pt-2">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-7 h-7 border-2 border-black rounded-full flex items-center justify-center"></div>
+                    <span className="text-2xl">😃</span>
+                    <span className="text-[10px] font-bold uppercase">Super!</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-7 h-7 border-2 border-black rounded-full flex items-center justify-center"></div>
+                    <span className="text-2xl">😐</span>
+                    <span className="text-[10px] font-bold uppercase">O.K.</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-7 h-7 border-2 border-black rounded-full flex items-center justify-center"></div>
+                    <span className="text-2xl">😟</span>
+                    <span className="text-[10px] font-bold uppercase">Schwer</span>
+                  </div>
+               </div>
+            </div>
+
+            <div className="flex flex-col gap-10 items-end">
+              <div className="flex items-center gap-4 text-sm font-bold">
+                Bewertung: 
+                <span className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="w-6 h-6 border-2 border-black rounded-full"></div>
+                  ))}
+                </span>
+              </div>
+              
+              <div className="text-right">
+                <p className="whitespace-nowrap font-bold text-base">Unterschrift: __________________________</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAnswerKey && (
+        <div className="mt-auto border-t border-gray-300 pt-4 text-center">
+          <p className="text-xs text-gray-400 font-bold uppercase tracking-widest italic">
+            Ende der Lösungsseite
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Worksheet;

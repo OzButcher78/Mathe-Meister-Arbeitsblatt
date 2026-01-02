@@ -63,7 +63,7 @@ const Worksheet: React.FC<WorksheetProps> = ({ problems, settings, isAnswerKey =
           )}
         </div>
         <div className="text-right flex flex-col items-end justify-between self-stretch">
-           <div className="text-[10px] font-bold uppercase tracking-widest text-black whitespace-nowrap mb-1">Mathe Meister Arbeitsblatt</div>
+           <div className="text-[10px] font-bold uppercase tracking-widest text-black whitespace-nowrap mb-1">Mathe Arbeitsblätter v1.0</div>
            <div className="text-[10px] text-gray-500 font-medium">
              {isAnswerKey ? 'Lösungsblatt' : `Seite ${pageNumber}`}
            </div>
@@ -140,13 +140,19 @@ const Worksheet: React.FC<WorksheetProps> = ({ problems, settings, isAnswerKey =
               </div>
             </div>
           </div>
+          <div className="mt-6 text-[8px] text-gray-400 text-left opacity-50 uppercase tracking-widest italic">
+            © 2025 Dieter Balmer
+          </div>
         </div>
       )}
 
       {isAnswerKey && (
-        <div className="mt-auto border-t border-gray-200 pt-4 text-center">
+        <div className="mt-auto border-t border-gray-200 pt-4 flex flex-col gap-1">
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest italic">
             Zusammenfassung aller Lösungen für dieses Set
+          </p>
+          <p className="text-[10px] text-gray-400 opacity-50 uppercase tracking-widest italic text-left">
+            © 2025 Dieter Balmer
           </p>
         </div>
       )}

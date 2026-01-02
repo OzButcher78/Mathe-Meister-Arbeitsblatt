@@ -8,6 +8,8 @@ import Worksheet from './components/Worksheet';
 const PROBLEMS_PER_PAGE = 12;
 const A4_WIDTH_PX = 794; // Roughly 210mm at 96dpi
 
+type LegalType = 'impressum' | 'datenschutz' | 'nutzung' | null;
+
 const App: React.FC = () => {
   const [settings, setSettings] = useState<WorksheetSettings>({
     title: '', 
@@ -25,6 +27,7 @@ const App: React.FC = () => {
   const [pages, setPages] = useState<MathProblem[][]>([]);
   const [previewScale, setPreviewScale] = useState(0.85);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [activeLegal, setActiveLegal] = useState<LegalType>(null);
   const mainContentRef = useRef<HTMLDivElement>(null);
 
   // Auto-fit scale logic for responsive preview
@@ -92,15 +95,6 @@ const App: React.FC = () => {
     }));
   };
 
-  const handlePrint = () => {
-    if (pages.length === 0) {
-      alert("Bitte klicken Sie zuerst auf 'Aufgaben Generieren'.");
-      return;
-    }
-    window.focus();
-    window.print();
-  };
-
   const handleDownload = () => {
     if (pages.length === 0) {
       alert("Bitte klicken Sie zuerst auf 'Aufgaben Generieren'.");
@@ -118,7 +112,7 @@ const App: React.FC = () => {
 
     const opt = {
       margin: 0,
-      filename: `Mathe_Meister_${settings.title.replace(/\s+/g, '_') || 'Arbeitsblatt'}.pdf`,
+      filename: `Mathe_Arbeitsblaetter_v1_0_${settings.title.replace(/\s+/g, '_') || 'Arbeitsblatt'}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { 
         scale: 2, 
@@ -144,11 +138,74 @@ const App: React.FC = () => {
     }
   };
 
-  // Flatten all problems for the compact answer key
   const allProblemsFlat = useMemo(() => pages.flat(), [pages]);
+
+  const renderLegalContent = () => {
+    switch (activeLegal) {
+      case 'impressum':
+        return (
+          <>
+            <h3 className="text-xl font-bold mb-4">Impressum</h3>
+            <div className="space-y-4 text-sm text-gray-600">
+              <p><strong>Betreiber der Website</strong></p>
+              <p>Dieter Balmer<br />Schweiz</p>
+              <p><strong>Kontakt</strong><br />E-Mail: info@sappy.ch</p>
+              <p><strong>Haftungsausschluss</strong><br />Die Inhalte dieser Website wurden mit größtmöglicher Sorgfalt erstellt. Für die Richtigkeit, Vollständigkeit und Aktualität der Inhalte kann jedoch keine Gewähr übernommen werden.</p>
+              <p>Diese Website kann Links zu externen Websites Dritter enthalten. Auf deren Inhalte haben wir keinen Einfluss. Für die Inhalte der verlinkten Seiten ist stets der jeweilige Betreiber oder Anbieter verantwortlich.</p>
+            </div>
+          </>
+        );
+      case 'datenschutz':
+        return (
+          <>
+            <h3 className="text-xl font-bold mb-4">Datenschutz</h3>
+            <div className="space-y-4 text-sm text-gray-600">
+              <p><strong>Allgemeiner Hinweis</strong><br />Der Schutz Ihrer persönlichen Daten ist uns wichtig. Diese Anwendung kann grundsätzlich genutzt werden, ohne dass personenbezogene Daten angegeben werden müssen.</p>
+              <p><strong>Datenverarbeitung</strong><br />Die Erstellung der Arbeitsblätter erfolgt entweder direkt in Ihrem Browser oder – sofern KI-Funktionen aktiviert sind – über externe KI-Dienste (z. B. Google Gemini). Dabei werden die eingegebenen Inhalte ausschließlich zur Generierung der Arbeitsblätter verwendet.</p>
+              <p>Es erfolgt keine dauerhafte Speicherung Ihrer Eingaben oder der generierten Aufgaben auf unseren eigenen Servern.</p>
+              <p>Bitte beachten Sie, dass bei Nutzung externer KI-Dienste deren jeweilige Datenschutzbestimmungen gelten.</p>
+              <p><strong>Cookies und lokale Speicherung</strong><br />Diese Anwendung verwendet keine Tracking-Cookies und keine externen Analyse-Tools. Technisch notwendige Einstellungen (z. B. Sprache oder Layout) können im lokalen Speicher Ihres Browsers (LocalStorage) abgelegt werden. Diese Daten verbleiben ausschließlich auf Ihrem Endgerät.</p>
+            </div>
+          </>
+        );
+      case 'nutzung':
+        return (
+          <>
+            <h3 className="text-xl font-bold mb-4">Nutzungsbedingungen</h3>
+            <div className="space-y-4 text-sm text-gray-600">
+              <p><strong>1. Geltungsbereich</strong><br />Diese Nutzungsbedingungen regeln die Nutzung des Mathe-Arbeitsblätter-Generators.</p>
+              <p><strong>2. Nutzung der Arbeitsblätter</strong><br />Die mit dieser Anwendung erstellten Arbeitsblätter dürfen kostenfrei für private, schulische und pädagogische Zwecke genutzt, ausgedruckt und weitergegeben werden.</p>
+              <p><strong>3. Einschränkungen</strong><br />Ein kommerzieller Weiterverkauf der generierten Arbeitsblätter oder der PDFs ist ohne ausdrückliche schriftliche Zustimmung des Betreibers nicht gestattet. Ebenso ist die Nutzung der Anwendung oder ihrer Bestandteile zu kommerziellen Zwecken (z. B. als Teil eines kostenpflichtigen Angebots) ohne Genehmigung untersagt.</p>
+              <p><strong>4. Urheberrecht</strong><br />Das Design der Anwendung sowie der Name „Mathe Arbeitsblätter v1.0“ sind urheberrechtlich geschützt. Die generierten Rechenaufgaben selbst gelten als allgemein gebräuchliche Inhalte und unterliegen in der Regel keinem urheberrechtlichen Schutz, sofern keine besondere schöpferische Leistung vorliegt.</p>
+            </div>
+          </>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100 app-container font-inter">
+      {/* Legal Modal */}
+      {activeLegal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="p-6 overflow-y-auto no-scrollbar">
+              {renderLegalContent()}
+            </div>
+            <div className="p-6 border-t border-gray-100 flex justify-end">
+              <button 
+                onClick={() => setActiveLegal(null)}
+                className="px-6 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors"
+              >
+                Schließen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div 
@@ -159,14 +216,14 @@ const App: React.FC = () => {
 
       {/* Sidebar / Settings Drawer */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-80 bg-white shadow-2xl overflow-y-auto no-print border-r border-gray-300 flex flex-col 
+        fixed inset-y-0 left-0 z-50 w-80 bg-white shadow-2xl overflow-y-auto no-print border-r border-gray-200 flex flex-col 
         transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:flex-shrink-0
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="p-6 border-b border-gray-100 bg-indigo-600 text-white flex justify-between items-center">
           <div>
-            <h1 className="text-xl font-semibold">Mathe Meister</h1>
-            <p className="text-xs opacity-80 mt-1 uppercase tracking-widest font-semibold">Generator</p>
+            <h1 className="text-xl font-semibold leading-tight">Mathe Arbeitsblätter</h1>
+            <p className="text-xs opacity-80 mt-1 uppercase tracking-widest font-semibold">v1.0 Generator</p>
           </div>
           <button 
             onClick={() => setIsSidebarOpen(false)}
@@ -243,13 +300,22 @@ const App: React.FC = () => {
           </section>
         </div>
 
-        <div className="p-6 bg-gray-50 border-t border-gray-100">
+        <div className="p-6 bg-gray-50 border-t border-gray-100 space-y-4">
           <button 
             onClick={generate}
             className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-indigo-200 active:scale-95 text-xs uppercase tracking-widest flex items-center justify-center gap-2"
           >
             <span>🔄</span> Aufgaben Generieren
           </button>
+          
+          <div className="pt-2 text-[10px] text-gray-400 font-medium space-y-2">
+            <div className="flex flex-wrap gap-x-3 gap-y-1 justify-center uppercase tracking-tighter">
+              <button onClick={() => setActiveLegal('impressum')} className="hover:text-indigo-600 hover:underline">Impressum</button>
+              <button onClick={() => setActiveLegal('datenschutz')} className="hover:text-indigo-600 hover:underline">Datenschutz</button>
+              <button onClick={() => setActiveLegal('nutzung')} className="hover:text-indigo-600 hover:underline">Nutzungsbedingungen</button>
+            </div>
+            <p className="text-center opacity-70">© 2025 Dieter Balmer</p>
+          </div>
         </div>
       </aside>
 
@@ -268,27 +334,19 @@ const App: React.FC = () => {
               </svg>
             </button>
             <div className="hidden sm:block">
-              <span className="text-[10px] font-black uppercase text-indigo-600 tracking-tighter block leading-none mb-1">Mathe Meister</span>
-              <h2 className="text-sm font-bold text-gray-800 leading-none">Arbeitsblatt Vorschau</h2>
+              <span className="text-[10px] font-black uppercase text-indigo-600 tracking-tighter block leading-none mb-1">Mathe Arbeitsblätter v1.0</span>
+              <h2 className="text-sm font-bold text-gray-800 leading-none">Vorschau</h2>
             </div>
-            <div className="sm:hidden text-indigo-600 font-bold text-sm">Mathe Meister</div>
+            <div className="sm:hidden text-indigo-600 font-bold text-sm">Mathe Arbeitsblätter v1.0</div>
           </div>
 
           <div className="flex items-center gap-2">
-            <button 
-              onClick={handlePrint}
-              className="p-2 sm:px-4 sm:py-2 bg-gray-900 hover:bg-black text-white rounded-xl font-bold text-xs transition-all flex items-center gap-2 shadow-sm uppercase tracking-wider"
-              title="Drucken"
-            >
-              <span className="hidden sm:inline">🖨️ Drucken</span>
-              <span className="sm:hidden text-lg">🖨️</span>
-            </button>
             <button 
               onClick={handleDownload}
               className="p-2 sm:px-4 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-2 shadow-sm uppercase tracking-wider"
               title="Download PDF"
             >
-              <span className="hidden sm:inline">💾 Download</span>
+              <span className="hidden sm:inline">💾 Download PDF</span>
               <span className="sm:hidden text-lg">💾</span>
             </button>
           </div>
@@ -302,14 +360,12 @@ const App: React.FC = () => {
           >
             {pages.length > 0 ? (
               <>
-                {/* Standard Problem Pages */}
                 {pages.map((problems, pageIdx) => (
                   <div key={`page-${pageIdx}`} className="bg-white shadow-2xl printable-page ring-1 ring-black/5">
                     <Worksheet problems={problems} settings={settings} pageNumber={pageIdx + 1} />
                   </div>
                 ))}
                 
-                {/* Single Compact Answer Sheet */}
                 {settings.generateAnswerKey && (
                   <div key="answer-page-compact" className="bg-white shadow-2xl printable-page ring-1 ring-black/5">
                     <Worksheet 

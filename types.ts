@@ -1,9 +1,12 @@
+
 export enum MathOperation {
   ADDITION = 'ADDITION',
   SUBTRACTION = 'SUBTRACTION',
   MULTIPLICATION = 'MULTIPLICATION',
   DIVISION = 'DIVISION'
 }
+
+export type Language = 'de' | 'en';
 
 export interface ProblemSubtype {
   id: string;
@@ -21,6 +24,7 @@ export interface WorksheetSettings {
   wholeNumberDivisionOnly: boolean;
   generateAnswerKey: boolean;
   pageCount: number;
+  language: Language;
   longMultiplication: {
     multiplicandDigits: number;
     multiplierDigits: number;

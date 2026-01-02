@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { WorksheetSettings, MathProblem } from './types';
+import { WorksheetSettings, MathProblem, Language } from './types';
 import { SUBTYPES } from './constants';
 import { generateProblem } from './utils/mathUtils';
 import Worksheet from './components/Worksheet';
@@ -18,6 +18,7 @@ const App: React.FC = () => {
     wholeNumberDivisionOnly: true,
     generateAnswerKey: false,
     pageCount: 1,
+    language: 'de',
     longMultiplication: {
       multiplicandDigits: 4,
       multiplierDigits: 2,
@@ -30,10 +31,12 @@ const App: React.FC = () => {
   const [activeLegal, setActiveLegal] = useState<LegalType>(null);
   const mainContentRef = useRef<HTMLDivElement>(null);
 
+  const t = (de: string, en: string) => settings.language === 'de' ? de : en;
+
   // Auto-fit scale logic for responsive preview
   const updateScale = useCallback(() => {
     if (mainContentRef.current) {
-      const padding = window.innerWidth < 640 ? 32 : 96; // Adjust padding for mobile vs desktop
+      const padding = window.innerWidth < 640 ? 32 : 96; 
       const availableWidth = mainContentRef.current.clientWidth - padding;
       const fitScale = Math.min(availableWidth / A4_WIDTH_PX, 1);
       setPreviewScale(fitScale);
@@ -48,7 +51,7 @@ const App: React.FC = () => {
 
   const generate = useCallback(() => {
     if (settings.enabledSubtypes.length === 0) {
-      alert("Bitte wählen Sie mindestens einen Aufgabentyp aus.");
+      alert(t("Bitte wählen Sie mindestens einen Aufgabentyp aus.", "Please select at least one problem type."));
       return;
     }
 
@@ -97,7 +100,7 @@ const App: React.FC = () => {
 
   const handleDownload = () => {
     if (pages.length === 0) {
-      alert("Bitte klicken Sie zuerst auf 'Aufgaben Generieren'.");
+      alert(t("Bitte klicken Sie zuerst auf 'Aufgaben Generieren'.", "Please click 'Generate Problems' first."));
       return;
     }
 
@@ -112,7 +115,7 @@ const App: React.FC = () => {
 
     const opt = {
       margin: 0,
-      filename: `Mathe_Arbeitsblaetter_v1_0_${settings.title.replace(/\s+/g, '_') || 'Arbeitsblatt'}.pdf`,
+      filename: `${t('Mathe_Arbeitsblaetter', 'Math_Worksheets')}_2026_${settings.title.replace(/\s+/g, '_') || 'Worksheet'}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { 
         scale: 2, 
@@ -132,7 +135,7 @@ const App: React.FC = () => {
         container.className = originalGap;
       });
     } else {
-      alert("PDF-Bibliothek lädt noch... bitte versuchen Sie es gleich erneut.");
+      alert(t("PDF-Bibliothek lädt noch...", "PDF library is still loading..."));
       container.style.transform = originalTransform;
       container.className = originalGap;
     }
@@ -145,38 +148,35 @@ const App: React.FC = () => {
       case 'impressum':
         return (
           <>
-            <h3 className="text-xl font-bold mb-4">Impressum</h3>
+            <h3 className="text-xl font-bold mb-4">{t('Impressum', 'Imprint')}</h3>
             <div className="space-y-4 text-sm text-gray-600">
-              <p><strong>Betreiber der Website</strong></p>
-              <p>Dieter Balmer<br />Schweiz</p>
-              <p><strong>Kontakt</strong><br />E-Mail: info@sappy.ch</p>
-              <p><strong>Haftungsausschluss</strong><br />Die Inhalte dieser Website wurden mit größtmöglicher Sorgfalt erstellt. Für die Richtigkeit, Vollständigkeit und Aktualität der Inhalte kann jedoch keine Gewähr übernommen werden.</p>
-              <p>Diese Website kann Links zu externen Websites Dritter enthalten. Auf deren Inhalte haben wir keinen Einfluss. Für die Inhalte der verlinkten Seiten ist stets der jeweilige Betreiber oder Anbieter verantwortlich.</p>
+              <p><strong>{t('Betreiber der Website', 'Website Operator')}</strong></p>
+              <p>Dieter Balmer<br />{t('Schweiz', 'Switzerland')}</p>
+              <p><strong>{t('Kontakt', 'Contact')}</strong><br />E-Mail: info@sappy.ch</p>
+              <p><strong>{t('Haftungsausschluss', 'Disclaimer')}</strong><br />{t('Die Inhalte dieser Website wurden mit größtmöglicher Sorgfalt erstellt. Für die Richtigkeit, Vollständigkeit und Aktualität der Inhalte können wir jedoch keine Gewähr übernehmen. Die Nutzung der Inhalte der Website erfolgt auf eigene Gefahr des Nutzers.', 'The contents of this website were created with the greatest possible care. However, we cannot guarantee the accuracy, completeness, and timeliness of the content. Use of the website\'s content is at the user\'s own risk.')}</p>
+              <p><strong>{t('Urheberrecht', 'Copyright')}</strong><br />{t('Die durch die Seitenbetreiber erstellten Inhalte und Werke auf diesen Seiten unterliegen dem schweizerischen Urheberrecht. Die Vervielfältigung, Bearbeitung, Verbreitung und jede Art der Verwertung außerhalb der Grenzen des Urheberrechtes bedürfen der schriftlichen Zustimmung.', 'The content and works created by the site operators on these pages are subject to Swiss copyright law. Reproduction, editing, distribution, and any kind of exploitation outside the limits of copyright law require written consent.')}</p>
             </div>
           </>
         );
       case 'datenschutz':
         return (
           <>
-            <h3 className="text-xl font-bold mb-4">Datenschutz</h3>
+            <h3 className="text-xl font-bold mb-4">{t('Datenschutz', 'Privacy Policy')}</h3>
             <div className="space-y-4 text-sm text-gray-600">
-              <p><strong>Allgemeiner Hinweis</strong><br />Der Schutz Ihrer persönlichen Daten ist uns wichtig. Diese Anwendung kann grundsätzlich genutzt werden, ohne dass personenbezogene Daten angegeben werden müssen.</p>
-              <p><strong>Datenverarbeitung</strong><br />Die Erstellung der Arbeitsblätter erfolgt entweder direkt in Ihrem Browser oder – sofern KI-Funktionen aktiviert sind – über externe KI-Dienste (z. B. Google Gemini). Dabei werden die eingegebenen Inhalte ausschließlich zur Generierung der Arbeitsblätter verwendet.</p>
-              <p>Es erfolgt keine dauerhafte Speicherung Ihrer Eingaben oder der generierten Aufgaben auf unseren eigenen Servern.</p>
-              <p>Bitte beachten Sie, dass bei Nutzung externer KI-Dienste deren jeweilige Datenschutzbestimmungen gelten.</p>
-              <p><strong>Cookies und lokale Speicherung</strong><br />Diese Anwendung verwendet keine Tracking-Cookies und keine externen Analyse-Tools. Technisch notwendige Einstellungen (z. B. Sprache oder Layout) können im lokalen Speicher Ihres Browsers (LocalStorage) abgelegt werden. Diese Daten verbleiben ausschließlich auf Ihrem Endgerät.</p>
+              <p><strong>{t('Allgemeiner Hinweis', 'General Information')}</strong><br />{t('Der Schutz Ihrer persönlichen Daten ist uns wichtig. Diese Anwendung generiert PDF-Dateien lokal in Ihrem Browser. Es werden keine persönlichen Rechendaten auf unseren Servern gespeichert.', 'The protection of your personal data is very important to us. This application generates PDF files locally in your browser. No personal calculation data is stored on our servers.')}</p>
+              <p><strong>{t('Server-Log-Files', 'Server Log Files')}</strong><br />{t('Der Provider der Seiten erhebt und speichert automatisch Informationen in so genannten Server-Log-Files, die Ihr Browser automatisch an uns übermittelt (Browsertyp, Betriebssystem, Referrer URL, Hostname des zugreifenden Rechners, Uhrzeit der Serveranfrage).', 'The provider of the pages automatically collects and stores information in so-called server log files, which your browser automatically transmits to us (browser type, operating system, referrer URL, host name of the accessing computer, time of server request).')}</p>
+              <p><strong>{t('Rechte des Nutzers', 'User Rights')}</strong><br />{t('Sie haben das Recht auf unentgeltliche Auskunft über Ihre gespeicherten personenbezogenen Daten sowie ein Recht auf Berichtigung oder Löschung dieser Daten.', 'You have the right to free information about your stored personal data as well as a right to correction or deletion of this data.')}</p>
             </div>
           </>
         );
       case 'nutzung':
         return (
           <>
-            <h3 className="text-xl font-bold mb-4">Nutzungsbedingungen</h3>
+            <h3 className="text-xl font-bold mb-4">{t('Nutzungsbedingungen', 'Terms of Use')}</h3>
             <div className="space-y-4 text-sm text-gray-600">
-              <p><strong>1. Geltungsbereich</strong><br />Diese Nutzungsbedingungen regeln die Nutzung des Mathe-Arbeitsblätter-Generators.</p>
-              <p><strong>2. Nutzung der Arbeitsblätter</strong><br />Die mit dieser Anwendung erstellten Arbeitsblätter dürfen kostenfrei für private, schulische und pädagogische Zwecke genutzt, ausgedruckt und weitergegeben werden.</p>
-              <p><strong>3. Einschränkungen</strong><br />Ein kommerzieller Weiterverkauf der generierten Arbeitsblätter oder der PDFs ist ohne ausdrückliche schriftliche Zustimmung des Betreibers nicht gestattet. Ebenso ist die Nutzung der Anwendung oder ihrer Bestandteile zu kommerziellen Zwecken (z. B. als Teil eines kostenpflichtigen Angebots) ohne Genehmigung untersagt.</p>
-              <p><strong>4. Urheberrecht</strong><br />Das Design der Anwendung sowie der Name „Mathe Arbeitsblätter v1.0“ sind urheberrechtlich geschützt. Die generierten Rechenaufgaben selbst gelten als allgemein gebräuchliche Inhalte und unterliegen in der Regel keinem urheberrechtlichen Schutz, sofern keine besondere schöpferische Leistung vorliegt.</p>
+              <p><strong>1. {t('Geltungsbereich', 'Scope')}</strong><br />{t('Diese Nutzungsbedingungen regeln die Nutzung der Web-Applikation "Mathe Arbeitsblätter".', 'These terms of use govern the use of the "Math Worksheets" web application.')}</p>
+              <p><strong>2. {t('Nutzungsrechte', 'Usage Rights')}</strong><br />{t('Die generierten Arbeitsblätter dürfen für persönliche, nicht-kommerzielle und pädagogische Zwecke (z.B. in Schulen oder für das Homeschooling) verwendet werden. Eine weitergehende Verbreitung oder ein kommerzieller Verkauf der Software selbst ist untersagt.', 'The generated worksheets may be used for personal, non-commercial, and educational purposes (e.g., in schools or for homeschooling). Further distribution or commercial sale of the software itself is prohibited.')}</p>
+              <p><strong>3. {t('Gewährleistung', 'Warranty')}</strong><br />{t('Die Software wird "wie besehen" ohne jegliche Gewährleistung zur Verfügung gestellt. Wir übernehmen keine Haftung für Schäden, die aus der Nutzung der Applikation entstehen.', 'The software is provided "as is" without any warranty of any kind. We assume no liability for damages resulting from the use of the application.')}</p>
             </div>
           </>
         );
@@ -199,7 +199,7 @@ const App: React.FC = () => {
                 onClick={() => setActiveLegal(null)}
                 className="px-6 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors"
               >
-                Schließen
+                {t('Schließen', 'Close')}
               </button>
             </div>
           </div>
@@ -222,7 +222,7 @@ const App: React.FC = () => {
       `}>
         <div className="p-6 border-b border-gray-100 bg-indigo-600 text-white flex justify-between items-center">
           <div>
-            <h1 className="text-xl font-semibold leading-tight">Mathe Arbeitsblätter</h1>
+            <h1 className="text-xl font-semibold leading-tight">{t('Mathe Arbeitsblätter', 'Math Worksheets')}</h1>
             <p className="text-xs opacity-80 mt-1 uppercase tracking-widest font-semibold">v1.0 Generator</p>
           </div>
           <button 
@@ -237,16 +237,16 @@ const App: React.FC = () => {
 
         <div className="p-6 space-y-6 flex-grow">
           <section>
-            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Arbeitsblatt Titel</label>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">{t('Arbeitsblatt Titel', 'Worksheet Title')}</label>
             <input 
               type="text" 
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none mb-4 bg-gray-50"
-              placeholder="z.B. Kopfrechnen Übung"
+              placeholder={t("z.B. Kopfrechnen Übung", "e.g. Mental Math Practice")}
               value={settings.title}
               onChange={e => setSettings({...settings, title: e.target.value})}
             />
             
-            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Seitenanzahl</label>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">{t('Seitenanzahl', 'Page Count')}</label>
             <input 
               type="number" min="1" max="10"
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 font-bold"
@@ -256,7 +256,7 @@ const App: React.FC = () => {
           </section>
 
           <section>
-            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-3">Aufgabentypen</label>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-3">{t('Aufgabentypen', 'Problem Types')}</label>
             <div className="grid grid-cols-1 gap-2">
               {SUBTYPES.map(s => (
                 <label key={s.id} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border ${settings.enabledSubtypes.includes(s.id) ? 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm' : 'bg-white border-gray-100 text-gray-600 hover:bg-gray-50'}`}>
@@ -274,7 +274,7 @@ const App: React.FC = () => {
 
           <section className="space-y-4 pt-4 border-t border-gray-100">
              <label className="flex items-center justify-between cursor-pointer group">
-              <span className="text-xs font-bold text-gray-500 group-hover:text-indigo-600 transition-colors">Lösungsblatt</span>
+              <span className="text-xs font-bold text-gray-500 group-hover:text-indigo-600 transition-colors">{t('Lösungsblatt', 'Answer Key')}</span>
               <div className={`w-10 h-5 rounded-full relative transition-colors ${settings.generateAnswerKey ? 'bg-indigo-600' : 'bg-gray-200'}`}>
                 <input 
                   type="checkbox" 
@@ -286,7 +286,7 @@ const App: React.FC = () => {
               </div>
             </label>
             <label className="flex items-center justify-between cursor-pointer group">
-              <span className="text-xs font-bold text-gray-500 group-hover:text-indigo-600 transition-colors">Neg. Zahlen</span>
+              <span className="text-xs font-bold text-gray-500 group-hover:text-indigo-600 transition-colors">{t('Neg. Zahlen', 'Neg. Numbers')}</span>
               <div className={`w-10 h-5 rounded-full relative transition-colors ${settings.allowNegatives ? 'bg-indigo-600' : 'bg-gray-200'}`}>
                 <input 
                   type="checkbox" 
@@ -305,16 +305,32 @@ const App: React.FC = () => {
             onClick={generate}
             className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-indigo-200 active:scale-95 text-xs uppercase tracking-widest flex items-center justify-center gap-2"
           >
-            <span>🔄</span> Aufgaben Generieren
+            <span>🔄</span> {t('Aufgaben Generieren', 'Generate Problems')}
           </button>
+          
+          {/* Language Switcher */}
+          <div className="flex justify-center gap-2">
+            <button 
+              onClick={() => setSettings(s => ({...s, language: 'en'}))}
+              className={`px-3 py-1 text-[10px] font-bold rounded-md border transition-colors ${settings.language === 'en' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-500 border-gray-200'}`}
+            >
+              EN
+            </button>
+            <button 
+              onClick={() => setSettings(s => ({...s, language: 'de'}))}
+              className={`px-3 py-1 text-[10px] font-bold rounded-md border transition-colors ${settings.language === 'de' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-500 border-gray-200'}`}
+            >
+              DE
+            </button>
+          </div>
           
           <div className="pt-2 text-[10px] text-gray-400 font-medium space-y-2">
             <div className="flex flex-wrap gap-x-3 gap-y-1 justify-center uppercase tracking-tighter">
-              <button onClick={() => setActiveLegal('impressum')} className="hover:text-indigo-600 hover:underline">Impressum</button>
-              <button onClick={() => setActiveLegal('datenschutz')} className="hover:text-indigo-600 hover:underline">Datenschutz</button>
-              <button onClick={() => setActiveLegal('nutzung')} className="hover:text-indigo-600 hover:underline">Nutzungsbedingungen</button>
+              <button onClick={() => setActiveLegal('impressum')} className="hover:text-indigo-600 hover:underline">{t('Impressum', 'Imprint')}</button>
+              <button onClick={() => setActiveLegal('datenschutz')} className="hover:text-indigo-600 hover:underline">{t('Datenschutz', 'Privacy')}</button>
+              <button onClick={() => setActiveLegal('nutzung')} className="hover:text-indigo-600 hover:underline">{t('Nutzungsbedingungen', 'Terms')}</button>
             </div>
-            <p className="text-center opacity-70">© 2025 Dieter Balmer</p>
+            <p className="text-center opacity-70">© 2026 Sappy.ch - Dieter Balmer</p>
           </div>
         </div>
       </aside>
@@ -334,8 +350,8 @@ const App: React.FC = () => {
               </svg>
             </button>
             <div className="hidden sm:block">
-              <span className="text-[10px] font-black uppercase text-indigo-600 tracking-tighter block leading-none mb-1">Mathe Arbeitsblätter v1.0</span>
-              <h2 className="text-sm font-bold text-gray-800 leading-none">Vorschau</h2>
+              <span className="text-[10px] font-black uppercase text-indigo-600 tracking-tighter block leading-none mb-1">{t('Mathe Arbeitsblätter v1.0', 'Math Worksheets v1.0')}</span>
+              <h2 className="text-sm font-bold text-gray-800 leading-none">{t('Vorschau', 'Preview')}</h2>
             </div>
             <div className="sm:hidden text-indigo-600 font-bold text-sm">Mathe Arbeitsblätter v1.0</div>
           </div>
@@ -344,9 +360,9 @@ const App: React.FC = () => {
             <button 
               onClick={handleDownload}
               className="p-2 sm:px-4 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-2 shadow-sm uppercase tracking-wider"
-              title="Download PDF"
+              title={t("PDF Herunterladen", "Download PDF")}
             >
-              <span className="hidden sm:inline">💾 Download PDF</span>
+              <span className="hidden sm:inline">💾 {t('PDF Herunterladen', 'Download PDF')}</span>
               <span className="sm:hidden text-lg">💾</span>
             </button>
           </div>
@@ -383,8 +399,8 @@ const App: React.FC = () => {
                 style={{ maxWidth: '210mm' }}
               >
                 <div className="text-5xl sm:text-6xl mb-6 grayscale opacity-20">📚</div>
-                <h2 className="text-base sm:text-xl font-bold text-gray-400 uppercase tracking-widest">Warten auf Aufgaben...</h2>
-                <p className="text-gray-300 mt-2 text-xs sm:text-sm">Wähle links die Aufgaben aus und klicke auf Generieren.</p>
+                <h2 className="text-base sm:text-xl font-bold text-gray-400 uppercase tracking-widest">{t('Warten auf Aufgaben...', 'Waiting for problems...')}</h2>
+                <p className="text-gray-300 mt-2 text-xs sm:text-sm">{t('Wähle links die Aufgaben aus und klicke auf Generieren.', 'Choose tasks on the left and click Generate.')}</p>
               </div>
             )}
           </div>

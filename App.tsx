@@ -1,11 +1,12 @@
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { WorksheetSettings, MathProblem } from './types';
 import { SUBTYPES } from './constants';
 import { generateProblem } from './utils/mathUtils';
 import Worksheet from './components/Worksheet';
 
 const PROBLEMS_PER_PAGE = 12;
+const A4_WIDTH_PX = 794; // Roughly 210mm at 96dpi
 
 const App: React.FC = () => {
   const [settings, setSettings] = useState<WorksheetSettings>({
@@ -23,10 +24,24 @@ const App: React.FC = () => {
 
   const [pages, setPages] = useState<MathProblem[][]>([]);
   const [previewScale, setPreviewScale] = useState(0.85);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const mainContentRef = useRef<HTMLDivElement>(null);
 
-  const hasDivisionSelected = useMemo(() => {
-    return settings.enabledSubtypes.some(id => id.startsWith('div_'));
-  }, [settings.enabledSubtypes]);
+  // Auto-fit scale logic for responsive preview
+  const updateScale = useCallback(() => {
+    if (mainContentRef.current) {
+      const padding = window.innerWidth < 640 ? 32 : 96; // Adjust padding for mobile vs desktop
+      const availableWidth = mainContentRef.current.clientWidth - padding;
+      const fitScale = Math.min(availableWidth / A4_WIDTH_PX, 1);
+      setPreviewScale(fitScale);
+    }
+  }, []);
+
+  useEffect(() => {
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    return () => window.removeEventListener('resize', updateScale);
+  }, [updateScale]);
 
   const generate = useCallback(() => {
     if (settings.enabledSubtypes.length === 0) {
@@ -64,7 +79,9 @@ const App: React.FC = () => {
     }
 
     setPages(allPages);
-  }, [settings]);
+    setIsSidebarOpen(false);
+    setTimeout(updateScale, 100);
+  }, [settings, updateScale]);
 
   const toggleSubtype = (id: string) => {
     setSettings(prev => ({
@@ -93,9 +110,6 @@ const App: React.FC = () => {
     const container = document.querySelector('.print-container') as HTMLElement;
     if (!container) return;
 
-    // To prevent shifting and blank pages in the PDF:
-    // 1. Temporarily set scale to 1:1
-    // 2. Hide visual gaps
     const originalTransform = container.style.transform;
     const originalGap = container.className;
     
@@ -110,7 +124,7 @@ const App: React.FC = () => {
         scale: 2, 
         useCORS: true, 
         logging: false,
-        scrollY: -window.scrollY // Fixes shifting if scrolled
+        scrollY: -window.scrollY
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: ['css', 'legacy'] }
@@ -120,7 +134,6 @@ const App: React.FC = () => {
     if (typeof html2pdf !== 'undefined') {
       // @ts-ignore
       html2pdf().from(container).set(opt).save().then(() => {
-        // Restore layout after generation
         container.style.transform = originalTransform;
         container.className = originalGap;
       });
@@ -131,199 +144,207 @@ const App: React.FC = () => {
     }
   };
 
+  // Flatten all problems for the compact answer key
+  const allProblemsFlat = useMemo(() => pages.flat(), [pages]);
+
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-200 app-container">
-      {/* Sidebar */}
-      <aside className="w-80 bg-white shadow-2xl overflow-y-auto no-print border-r border-gray-300 flex flex-col">
-        <div className="p-6 border-b border-gray-100 bg-indigo-600 text-white">
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <span className="text-2xl">📝</span> Mathe Meister Arbeitsblatt
-          </h1>
-          <p className="text-xs opacity-80 mt-1 uppercase tracking-widest font-semibold">Konfiguration</p>
+    <div className="flex h-screen overflow-hidden bg-gray-100 app-container font-inter">
+      {/* Mobile Backdrop */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar / Settings Drawer */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-80 bg-white shadow-2xl overflow-y-auto no-print border-r border-gray-300 flex flex-col 
+        transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:flex-shrink-0
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        <div className="p-6 border-b border-gray-100 bg-indigo-600 text-white flex justify-between items-center">
+          <div>
+            <h1 className="text-xl font-semibold">Mathe Meister</h1>
+            <p className="text-xs opacity-80 mt-1 uppercase tracking-widest font-semibold">Generator</p>
+          </div>
+          <button 
+            onClick={() => setIsSidebarOpen(false)}
+            className="lg:hidden p-2 hover:bg-white/20 rounded-full transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         <div className="p-6 space-y-6 flex-grow">
           <section>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Titel des Arbeitsblatts</label>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Arbeitsblatt Titel</label>
             <input 
               type="text" 
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none mb-4"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none mb-4 bg-gray-50"
               placeholder="z.B. Kopfrechnen Übung"
               value={settings.title}
               onChange={e => setSettings({...settings, title: e.target.value})}
             />
             
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Seitenanzahl</label>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Seitenanzahl</label>
             <input 
               type="number" min="1" max="10"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 font-bold"
               value={settings.pageCount}
               onChange={e => setSettings({...settings, pageCount: parseInt(e.target.value) || 1})}
             />
           </section>
 
           <section>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-3">Aufgabentypen</label>
-            <div className="space-y-1">
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-3">Aufgabentypen</label>
+            <div className="grid grid-cols-1 gap-2">
               {SUBTYPES.map(s => (
-                <label key={s.id} className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all border ${settings.enabledSubtypes.includes(s.id) ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-gray-50 border-transparent text-gray-600 hover:bg-gray-100'}`}>
+                <label key={s.id} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border ${settings.enabledSubtypes.includes(s.id) ? 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm' : 'bg-white border-gray-100 text-gray-600 hover:bg-gray-50'}`}>
                   <input 
                     type="checkbox" 
-                    className="w-4 h-4 rounded text-indigo-600"
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300"
                     checked={settings.enabledSubtypes.includes(s.id)}
                     onChange={() => toggleSubtype(s.id)}
                   />
-                  <span className="text-xs font-medium">{s.name}</span>
+                  <span className="text-xs font-medium leading-tight">{s.name}</span>
                 </label>
               ))}
             </div>
           </section>
 
-          <section className="space-y-3 pt-2 border-t border-gray-100">
+          <section className="space-y-4 pt-4 border-t border-gray-100">
              <label className="flex items-center justify-between cursor-pointer group">
-              <span className="text-xs font-bold text-gray-600 group-hover:text-black">Lösungsblatt erstellen</span>
-              <input 
-                type="checkbox" 
-                className="w-4 h-4"
-                checked={settings.generateAnswerKey}
-                onChange={e => setSettings({...settings, generateAnswerKey: e.target.checked})}
-              />
+              <span className="text-xs font-bold text-gray-500 group-hover:text-indigo-600 transition-colors">Lösungsblatt</span>
+              <div className={`w-10 h-5 rounded-full relative transition-colors ${settings.generateAnswerKey ? 'bg-indigo-600' : 'bg-gray-200'}`}>
+                <input 
+                  type="checkbox" 
+                  className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                  checked={settings.generateAnswerKey}
+                  onChange={e => setSettings({...settings, generateAnswerKey: e.target.checked})}
+                />
+                <div className={`absolute top-1 left-1 bg-white w-3 h-3 rounded-full transition-transform ${settings.generateAnswerKey ? 'translate-x-5' : ''}`}></div>
+              </div>
             </label>
             <label className="flex items-center justify-between cursor-pointer group">
-              <span className="text-xs font-bold text-gray-600 group-hover:text-black">Negative Subtraktion</span>
-              <input 
-                type="checkbox" 
-                className="w-4 h-4"
-                checked={settings.allowNegatives}
-                onChange={e => setSettings({...settings, allowNegatives: e.target.checked})}
-              />
+              <span className="text-xs font-bold text-gray-500 group-hover:text-indigo-600 transition-colors">Neg. Zahlen</span>
+              <div className={`w-10 h-5 rounded-full relative transition-colors ${settings.allowNegatives ? 'bg-indigo-600' : 'bg-gray-200'}`}>
+                <input 
+                  type="checkbox" 
+                  className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                  checked={settings.allowNegatives}
+                  onChange={e => setSettings({...settings, allowNegatives: e.target.checked})}
+                />
+                <div className={`absolute top-1 left-1 bg-white w-3 h-3 rounded-full transition-transform ${settings.allowNegatives ? 'translate-x-5' : ''}`}></div>
+              </div>
             </label>
           </section>
         </div>
 
-        <div className="p-6 bg-gray-50 border-t border-gray-200">
+        <div className="p-6 bg-gray-50 border-t border-gray-100">
           <button 
             onClick={generate}
-            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-md active:scale-95 text-xs uppercase tracking-widest"
+            className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-indigo-200 active:scale-95 text-xs uppercase tracking-widest flex items-center justify-center gap-2"
           >
-            Aufgaben Generieren
+            <span>🔄</span> Aufgaben Generieren
           </button>
         </div>
       </aside>
 
-      {/* Main Preview Area */}
-      <main className="flex-grow overflow-y-auto p-12 relative flex flex-col items-center gap-8 no-scrollbar bg-gray-200 main-content">
-        <div className="fixed top-6 right-10 z-50 flex items-center gap-6 no-print bg-white/95 backdrop-blur-md px-6 py-3 rounded-2xl shadow-2xl border border-white">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black uppercase text-indigo-600 tracking-tighter">Mathe Meister Arbeitsblatt</span>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-gray-400 font-bold uppercase">Zoom</span>
-              <input 
-                type="range" min="0.3" max="1" step="0.05" 
-                value={previewScale} 
-                onChange={e => setPreviewScale(parseFloat(e.target.value))}
-                className="w-16 accent-indigo-600 h-1"
-              />
+      {/* Main Content Area */}
+      <main className="flex-grow flex flex-col relative overflow-hidden h-full" ref={mainContentRef}>
+        
+        {/* Responsive Navbar */}
+        <header className="flex items-center justify-between px-4 sm:px-6 py-4 bg-white border-b border-gray-200 no-print shadow-sm z-30">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+              </svg>
+            </button>
+            <div className="hidden sm:block">
+              <span className="text-[10px] font-black uppercase text-indigo-600 tracking-tighter block leading-none mb-1">Mathe Meister</span>
+              <h2 className="text-sm font-bold text-gray-800 leading-none">Arbeitsblatt Vorschau</h2>
             </div>
+            <div className="sm:hidden text-indigo-600 font-bold text-sm">Mathe Meister</div>
           </div>
-          
-          <div className="h-8 w-px bg-gray-200"></div>
 
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold text-gray-400 uppercase mr-1">PDF:</span>
             <button 
               onClick={handlePrint}
-              className="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-2 shadow-sm uppercase tracking-wider"
+              className="p-2 sm:px-4 sm:py-2 bg-gray-900 hover:bg-black text-white rounded-xl font-bold text-xs transition-all flex items-center gap-2 shadow-sm uppercase tracking-wider"
+              title="Drucken"
             >
-              🖨️ Drucken
+              <span className="hidden sm:inline">🖨️ Drucken</span>
+              <span className="sm:hidden text-lg">🖨️</span>
             </button>
             <button 
               onClick={handleDownload}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-2 shadow-sm uppercase tracking-wider"
+              className="p-2 sm:px-4 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-2 shadow-sm uppercase tracking-wider"
+              title="Download PDF"
             >
-              💾 Download
+              <span className="hidden sm:inline">💾 Download</span>
+              <span className="sm:hidden text-lg">💾</span>
             </button>
           </div>
-        </div>
+        </header>
 
-        <div 
-          className="flex flex-col gap-16 transition-transform duration-300 ease-out origin-top print-container"
-          style={{ transform: `scale(${previewScale})` }}
-        >
-          {pages.length > 0 ? (
-            <>
-              {pages.map((problems, pageIdx) => (
-                <div key={`page-${pageIdx}`} className="page-break bg-white shadow-2xl printable-page">
-                  <Worksheet problems={problems} settings={settings} pageNumber={pageIdx + 1} />
-                </div>
-              ))}
-              
-              {settings.generateAnswerKey && pages.map((problems, pageIdx) => (
-                <div key={`answer-page-${pageIdx}`} className="page-break bg-white shadow-2xl printable-page">
-                  <Worksheet problems={problems} settings={settings} isAnswerKey pageNumber={pageIdx + 1} />
-                </div>
-              ))}
-            </>
-          ) : (
-            <div className="bg-white p-20 rounded-3xl shadow-xl text-center border-4 border-dashed border-gray-100 flex flex-col items-center justify-center min-h-[800px] w-[210mm]">
-              <div className="text-6xl mb-6">📚</div>
-              <h2 className="text-xl font-bold text-gray-400 uppercase tracking-widest">Warten auf Aufgaben...</h2>
-              <p className="text-gray-300 mt-2">Wähle links die gewünschten Aufgaben aus.</p>
-            </div>
-          )}
+        {/* Scrollable Preview Container */}
+        <div className="flex-grow overflow-auto p-4 sm:p-12 no-scrollbar bg-gray-200 flex flex-col items-center">
+          <div 
+            className="flex flex-col gap-16 transition-transform duration-300 ease-out origin-top print-container pb-20"
+            style={{ transform: `scale(${previewScale})` }}
+          >
+            {pages.length > 0 ? (
+              <>
+                {/* Standard Problem Pages */}
+                {pages.map((problems, pageIdx) => (
+                  <div key={`page-${pageIdx}`} className="bg-white shadow-2xl printable-page ring-1 ring-black/5">
+                    <Worksheet problems={problems} settings={settings} pageNumber={pageIdx + 1} />
+                  </div>
+                ))}
+                
+                {/* Single Compact Answer Sheet */}
+                {settings.generateAnswerKey && (
+                  <div key="answer-page-compact" className="bg-white shadow-2xl printable-page ring-1 ring-black/5">
+                    <Worksheet 
+                      problems={allProblemsFlat} 
+                      settings={settings} 
+                      isAnswerKey={true} 
+                      pageNumber={1} 
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <div 
+                className="bg-white p-8 sm:p-20 rounded-3xl shadow-xl text-center border-4 border-dashed border-gray-100 flex flex-col items-center justify-center min-h-[400px] sm:min-h-[800px] w-full"
+                style={{ maxWidth: '210mm' }}
+              >
+                <div className="text-5xl sm:text-6xl mb-6 grayscale opacity-20">📚</div>
+                <h2 className="text-base sm:text-xl font-bold text-gray-400 uppercase tracking-widest">Warten auf Aufgaben...</h2>
+                <p className="text-gray-300 mt-2 text-xs sm:text-sm">Wähle links die Aufgaben aus und klicke auf Generieren.</p>
+              </div>
+            )}
+          </div>
         </div>
       </main>
 
       <style>{`
         @media print {
-          body {
-            background: white !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          .no-print {
-            display: none !important;
-          }
-          .app-container {
-            display: block !important;
-            height: auto !important;
-            overflow: visible !important;
-            position: relative !important;
-          }
-          .main-content {
-            display: block !important;
-            height: auto !important;
-            overflow: visible !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            background: white !important;
-          }
-          .print-container {
-            transform: none !important;
-            display: block !important;
-            width: 100% !important;
-            gap: 0 !important; /* Remove preview gaps between pages for printing */
-          }
-          .printable-page {
-            box-shadow: none !important;
-            margin: 0 !important;
-            border: none !important;
-            width: 210mm !important;
-            height: 297mm !important;
-            display: block !important;
-          }
-          /* Prevent blank pages by only breaking AFTER non-last pages */
-          .printable-page:not(:last-child) {
-            page-break-after: always !important;
-          }
-          @page {
-            size: A4;
-            margin: 0;
-          }
-          * {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
+          body { background: white !important; margin: 0 !important; padding: 0 !important; }
+          .no-print { display: none !important; }
+          .app-container { display: block !important; height: auto !important; overflow: visible !important; position: relative !important; }
+          .print-container { transform: none !important; display: block !important; width: 100% !important; gap: 0 !important; padding: 0 !important; }
+          .printable-page { box-shadow: none !important; margin: 0 !important; border: none !important; width: 210mm !important; height: 297mm !important; display: block !important; }
+          .printable-page:not(:last-child) { page-break-after: always !important; }
+          @page { size: A4; margin: 0; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       `}</style>
     </div>
